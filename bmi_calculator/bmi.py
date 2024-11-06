@@ -1,4 +1,7 @@
+"""Module contains helper functions"""
+
 def bmi_class(bm):
+    """Classifies the bmi based on value"""
     if bm <= 16:
         return "Very Severely underweight"
     elif bm <= 16.9:
@@ -18,6 +21,7 @@ def bmi_class(bm):
     
 
 def bmi_category_text(bm):
+    """Classifies the bmi based on value"""
     if bm <= 16:
         return "You are very severely underweight"
     elif bm <= 16.9:

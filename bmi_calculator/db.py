@@ -1,3 +1,5 @@
+"""Contains code that operates the database"""
+
 import psycopg2
 from dotenv import load_dotenv
 import os
@@ -25,23 +27,33 @@ class DB:
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100),
-                age NUMERIC,
-                weight NUMERIC,
-                height NUMERIC,
+                age INTEGER,
+                weight DECIMAL,
+                height DECIMAL,
                 sex VARCHAR(100)
+            );
+            CREATE TABLE IF NOT EXISTS bmi_history (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                user_id INTEGER REFERENCES users (id),
+                bmi DECIMAL,
+                date DATE
             );
         '''
         self.cursor.execute(query)
         self.connect.commit()
 
-    def insert_data(self, name):
-        """Inserts data to users table"""
+    def insert_data(self, name, age, weight, height, sex):
+        """Adds a user to users table"""
         insert_query = '''
             INSERT INTO users (name, age, weight, height, sex)
-            VALUES (%s, 0, 0, 0, 'no');
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id;
         '''
-        self.cursor.execute(insert_query, (name,))
+        self.cursor.execute(insert_query, (name, age, weight, height, sex))
+        user_id = self.cursor.fetchone()[0]
         self.connect.commit()
+        return user_id
 
     def update_data(self, name, age, weight, height, sex):
         """Updates the users data based on the provided info"""
@@ -61,7 +73,16 @@ class DB:
         self.cursor.execute(get_query, (name,))
         user = self.cursor.fetchone()
         return user
-
+    
+    def get_user_id(self, name):
+        """Gets the users id"""
+        get_query = '''
+            SELECT id FROM users WHERE name = %s;
+        '''
+        self.cursor.execute(get_query, (name,))
+        user_id = self.cursor.fetchone()
+        return user_id
+    
     def check_data(self, name):
         """Checks if user exists in the table"""
         check_query = '''
@@ -70,12 +91,63 @@ class DB:
         self.cursor.execute(check_query, (name,))
         exists = self.cursor.fetchone()[0]
         return exists
+    
+    def insert_bmi_date(self, user_id, bmi, date):
+        """Adds a BMI and date values to the database."""
+        # Check if a record with the given user_id and date already exists
+        check_query = '''
+            SELECT 1 FROM bmi_history WHERE user_id = %s AND date = %s;
+        '''
+        self.cursor.execute(check_query, (user_id, date))
+        record_exists = self.cursor.fetchone() is not None
 
+        if record_exists:
+            # Update the existing record
+            query = '''
+                UPDATE bmi_history SET bmi = %s WHERE user_id = %s AND date = %s;
+            '''
+            self.cursor.execute(query, (bmi, user_id, date))
+        else:
+            # Insert a new record
+            query = '''
+                INSERT INTO bmi_history (user_id, bmi, date)
+                VALUES (%s, %s, %s);
+            '''
+            self.cursor.execute(query, (user_id, bmi, date))
+
+        # Commit the transaction
+        self.connect.commit()
+    
+    def get_bmi_date(self, user_id):
+        """Retreives the bmi and date values of a user"""
+        get_query = '''
+            SELECT bmi, date FROM  bmi_history WHERE user_id=%s;
+        '''
+        self.cursor.execute(get_query, (user_id,))
+        data = self.cursor.fetchall()
+        return data
+    
+    def delete_all(self):
+        """Deletes all users from table users"""
+        del_query = '''
+            DROP TABLE users CASCADE;
+            DROP TABLE bmi_history;
+        '''
+        self.cursor.execute(del_query)
+        self.connect.commit()       
+    
+    def get_all_users(self):
+        """Gets all users"""
+        query = '''
+            SELECT ALL FROM users;
+        '''
+        self.cursor.execute(query)
+        data = self.cursor.fetchall()
+        return data
+        
+        
     def close(self):
         """Closes the cursor and connection"""
         self.cursor.close()
         self.connect.close()
 
-db_op = DB()
-db_op.create_table()
-db_op.close()
