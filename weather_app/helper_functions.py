@@ -39,3 +39,9 @@ def get_coordinates_from_city(city_name):
     loc = geopy.Nominatim(user_agent="GetLoc")
     getLoc = loc.geocode(city_name, timeout=10)
     return [getLoc.latitude, getLoc.longitude]
+
+def temp_converter(temp):
+    """converts celcius to farenhiet"""
+    temp = float(temp)
+    rez = (temp * 9/5) + 32
+    return round(rez, 2)
